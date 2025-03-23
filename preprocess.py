@@ -3,10 +3,11 @@ import re
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
+import numpy as np
 
 def clean_text(text):
-    text = re.sub(r'[^a-zA-Z\s]', '', text)  # Xóa ký tự đặc biệt và số
-    text = text.lower()  # Chuyển thành chữ thường
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    text = text.lower()
     return text
 
 def preprocess_data(input_file, output_file, max_words=5000, maxlen=100):
@@ -28,16 +29,19 @@ def preprocess_data(input_file, output_file, max_words=5000, maxlen=100):
     with open('data/tokenizer.pkl', 'wb') as f:
         pickle.dump(tokenizer, f)
     
-    # Lưu dữ liệu đã xử lý (X và y)
-    y = pd.get_dummies(data['polarity']).values  # Chuyển nhãn thành one-hot
+    # Chuyển nhãn thành one-hot encoding và ép kiểu thành số
+    y = pd.get_dummies(data['polarity']).values.astype(np.int32)  # Ép thành int32
+    
+    # Lưu dữ liệu đã xử lý
     data_processed = {'X': X, 'y': y}
     with open('data/processed_data.pkl', 'wb') as f:
         pickle.dump(data_processed, f)
     
     print("Sample X:", X[:5])
     print("Sample y:", y[:5])
+    print("y shape:", y.shape)
 
 if __name__ == "__main__":
     input_file = 'data/sentiment_small.csv'
-    output_file = 'data/sentiment_small.csv'  # Không cần lưu lại nếu không muốn
+    output_file = 'data/sentiment_small.csv'
     preprocess_data(input_file, output_file)
