@@ -1,12 +1,15 @@
 import pickle
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split  # Sửa model_split thành model_selection
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.metrics import precision_score, recall_score, classification_report
+import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 
 # Tắt GPU, chỉ dùng CPU
 tf.config.set_visible_devices([], 'GPU')
-
 # Đọc dữ liệu đã xử lý
 with open('data/processed_data.pkl', 'rb') as f:
     data = pickle.load(f)
@@ -32,17 +35,20 @@ split_data = {
 with open('data/split_data.pkl', 'wb') as f:
     pickle.dump(split_data, f)
 
-# Xây dựng mô hình (2 lớp)
+# Xây dựng mô hình
 model = Sequential()
 model.add(Embedding(input_dim=5000, output_dim=128, input_length=100))
-model.add(LSTM(32))
+model.add(LSTM(64))
 model.add(Dense(2, activation='softmax'))
 
 # Compile mô hình
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
+# Early stopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=1)
+
 # Huấn luyện
-history = model.fit(X_train, y_train, epochs=3, batch_size=32, validation_data=(X_val, y_val))
+history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_val, y_val), callbacks=[early_stopping])
 
 # Lưu mô hình
 model.save('data/sentiment_model.h5')
@@ -52,6 +58,22 @@ print("Model saved to data/sentiment_model.h5")
 test_loss, test_accuracy = model.evaluate(X_test, y_test)
 print(f"Test Loss: {test_loss:.4f}")
 print(f"Test Accuracy: {test_accuracy:.4f}")
+
+# Dự đoán trên tập test
+y_pred = model.predict(X_test)
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_test_classes = np.argmax(y_test, axis=1)
+
+# Tính precision, recall
+print(classification_report(y_test_classes, y_pred_classes, target_names=['Negative', 'Positive']))
+
+# Vẽ biểu đồ loss
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.legend()
+plt.title('Loss over Epochs')
+plt.savefig('data/loss_plot.png')
+plt.show()
 
 # Lưu kết quả huấn luyện
 with open('data/training_history.pkl', 'wb') as f:
